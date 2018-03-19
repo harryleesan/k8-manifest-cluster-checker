@@ -15,17 +15,18 @@ import (
 )
 
 var (
-	includeFiles = []string{"deployment.yml", "service.yml"}
-	re_namespace = regexp.MustCompile("namespace\":\"([a-zA-Z0-9_-]*)\"")
-	re_name      = regexp.MustCompile("name\":\"([a-zA-Z0-9_-]*)\"")
+	includeFiles                  = []string{"deployment.yml", "service.yml"}
+	re_namespace                  = regexp.MustCompile("namespace\":\"([a-zA-Z0-9_-]*)\"")
+	re_search_name                = regexp.MustCompile("name\":\"([a-zA-Z0-9_-]*)\"")
+	re_remove_service_annotations = regexp.MustCompile("\"annotations\":{},")
 )
 
 func checkDeployments(d string) {
-	if len(re_name.FindStringSubmatch(d)) > 0 {
+	if len(re_search_name.FindStringSubmatch(d)) > 0 {
 		// fmt.Printf("namespace: %v\n", re_namespace.FindStringSubmatch(d)[1])
 		// fmt.Printf("deployment: %v\n\n", re_deployment.FindStringSubmatch(d)[1])
 		// fmt.Printf("local file: %q\n\n", d)
-		data_remote := readRemoteDeploymentJSON(re_namespace.FindStringSubmatch(d)[1], re_name.FindStringSubmatch(d)[1])
+		data_remote := readRemoteDeploymentJSON(re_namespace.FindStringSubmatch(d)[1], re_search_name.FindStringSubmatch(d)[1])
 		if data_remote != "" {
 			// fmt.Printf("remote file: %q\n\n", data_remote)
 			compareLocalRemote(d, data_remote)
@@ -35,9 +36,9 @@ func checkDeployments(d string) {
 
 func checkServices(d string) {
 	fmt.Printf("namespace: %v\n", re_namespace.FindStringSubmatch(d)[1])
-	fmt.Printf("service: %v\n\n", re_name.FindStringSubmatch(d)[1])
+	fmt.Printf("service: %v\n\n", re_search_name.FindStringSubmatch(d)[1])
 	fmt.Printf("local file: %q\n\n", d)
-	data_remote := readRemoteServiceJSON(re_namespace.FindStringSubmatch(d)[1], re_name.FindStringSubmatch(d)[1])
+	data_remote := readRemoteServiceJSON(re_namespace.FindStringSubmatch(d)[1], re_search_name.FindStringSubmatch(d)[1])
 	if data_remote != "" {
 		fmt.Printf("remote file: %q\n\n", data_remote)
 		compareLocalRemote(d, data_remote)
@@ -75,7 +76,7 @@ func readRemoteServiceJSON(ns string, s string) string {
 		return ""
 	}
 	// fmt.Printf("%+v", service.ObjectMeta.Annotations["kubectl.kubernetes.io/last-applied-configuration"])
-	return strings.TrimSuffix(service.ObjectMeta.Annotations["kubectl.kubernetes.io/last-applied-configuration"], "\n")
+	return strings.TrimSuffix(re_remove_service_annotations.ReplaceAllString(service.ObjectMeta.Annotations["kubectl.kubernetes.io/last-applied-configuration"], ""), "\n")
 }
 
 func compareLocalRemote(local string, remote string) {
@@ -86,7 +87,6 @@ func compareLocalRemote(local string, remote string) {
 		fmt.Printf("%v\n\n", diffLocalRemote)
 	} else {
 		color.Blue("No diff!\n\n")
-		// fmt.Printf("No diff!\n")
 	}
 }
 
@@ -97,7 +97,6 @@ func getFiles(dir string) []string {
 			if checkStringInIncludedFiles(f.Name()) {
 				fileList = append(fileList, path)
 			}
-			// fmt.Printf("Excluding: %v\n", path)
 		}
 		return err
 	})
