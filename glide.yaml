@@ -5,3 +5,5 @@ import:
 - package: k8s.io/apimachinery
   subpackages:
   - pkg/util/...
+- package: github.com/fatih/color
+  version: ^1.6.0

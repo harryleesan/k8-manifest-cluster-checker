@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/fatih/color"
 	"io/ioutil"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/diff"
@@ -15,11 +16,32 @@ import (
 
 var (
 	includeFiles = []string{"deployment.yml", "service.yml"}
+	re_namespace = regexp.MustCompile("namespace\":\"([a-zA-Z0-9_-]*)\"")
+	re_name      = regexp.MustCompile("name\":\"([a-zA-Z0-9_-]*)\"")
 )
 
-type fileName struct {
-	Name string
-	Path string
+func checkDeployments(d string) {
+	if len(re_name.FindStringSubmatch(d)) > 0 {
+		// fmt.Printf("namespace: %v\n", re_namespace.FindStringSubmatch(d)[1])
+		// fmt.Printf("deployment: %v\n\n", re_deployment.FindStringSubmatch(d)[1])
+		// fmt.Printf("local file: %q\n\n", d)
+		data_remote := readRemoteDeploymentJSON(re_namespace.FindStringSubmatch(d)[1], re_name.FindStringSubmatch(d)[1])
+		if data_remote != "" {
+			// fmt.Printf("remote file: %q\n\n", data_remote)
+			compareLocalRemote(d, data_remote)
+		}
+	}
+}
+
+func checkServices(d string) {
+	fmt.Printf("namespace: %v\n", re_namespace.FindStringSubmatch(d)[1])
+	fmt.Printf("service: %v\n\n", re_name.FindStringSubmatch(d)[1])
+	fmt.Printf("local file: %q\n\n", d)
+	data_remote := readRemoteServiceJSON(re_namespace.FindStringSubmatch(d)[1], re_name.FindStringSubmatch(d)[1])
+	if data_remote != "" {
+		fmt.Printf("remote file: %q\n\n", data_remote)
+		compareLocalRemote(d, data_remote)
+	}
 }
 
 func readLocalYAML(f string) string {
@@ -34,20 +56,37 @@ func readLocalYAML(f string) string {
 	return string(data_json)
 }
 
-func readRemoteJSON(ns string, d string) string {
+func readRemoteDeploymentJSON(ns string, d string) string {
 	deployment, err := clientset.AppsV1beta1().Deployments(ns).Get(d, metav1.GetOptions{})
-	check(err)
+	// check(err)
+	if err != nil {
+		color.Red("Deployment does not exist: %v!\n\n", d)
+		return ""
+		// fmt.Printf("Deployment does not exist!\n\n")
+	}
 	// fmt.Printf("%v\n", deployment.ObjectMeta.Annotations["kubectl.kubernetes.io/last-applied-configuration"])
-	return deployment.ObjectMeta.Annotations["kubectl.kubernetes.io/last-applied-configuration"]
+	return strings.TrimSuffix(deployment.ObjectMeta.Annotations["kubectl.kubernetes.io/last-applied-configuration"], "\n")
+}
+
+func readRemoteServiceJSON(ns string, s string) string {
+	service, err := clientset.CoreV1().Services(ns).Get(s, metav1.GetOptions{})
+	if err != nil {
+		color.Red("Service does not exist: %v!\n\n", s)
+		return ""
+	}
+	// fmt.Printf("%+v", service.ObjectMeta.Annotations["kubectl.kubernetes.io/last-applied-configuration"])
+	return strings.TrimSuffix(service.ObjectMeta.Annotations["kubectl.kubernetes.io/last-applied-configuration"], "\n")
 }
 
 func compareLocalRemote(local string, remote string) {
 	objLocalRemote := diff.ObjectReflectDiff(local, remote)
 	if objLocalRemote != "<no diffs>" {
+		color.Yellow("Differences found in resource: %v!\n\n", remote)
 		diffLocalRemote := diff.StringDiff(local, remote)
-		fmt.Printf("%v\n", diffLocalRemote)
+		fmt.Printf("%v\n\n", diffLocalRemote)
 	} else {
-		fmt.Printf("No diff!\n")
+		color.Blue("No diff!\n\n")
+		// fmt.Printf("No diff!\n")
 	}
 }
 
@@ -63,9 +102,9 @@ func getFiles(dir string) []string {
 		return err
 	})
 	check(e)
-	for _, file := range fileList {
-		fmt.Println(file)
-	}
+	// for _, file := range fileList {
+	// 	fmt.Println(file)
+	// }
 	return fileList
 }
 
@@ -87,31 +126,17 @@ func check(e error) {
 }
 
 func main() {
+	argDir := os.Args[1]
 	kubeClientSetUp()
-	// pods, err := clientset.CoreV1().Pods("dms-dev").List(metav1.ListOptions{})
-	// check(err)
-	// fmt.Printf("There are %d pods in dms-dev\n", len(pods.Items))
-	// deployments, err := clientset.AppsV1beta1().Deployments("dms-dev").List(metav1.ListOptions{})
-	// check(err)
-	// fmt.Printf("There are %d deployments in dms-dev\n", len(deployments.Items))
-	// local := readLocalYAML("deployment.yml")
-	// remote := readRemoteJSON("dms-dev", "dms")
-	// data_cluster, err := ioutil.ReadFile("cluster.txt")
-	// data_convert, err := ioutil.ReadFile("convert.txt")
-	// check(err)
-	// compareLocalRemote(local, remote)
-	fileList := getFiles("apps")
+	fileList := getFiles(argDir)
 	for _, file := range fileList {
 		data_local := readLocalYAML(file)
 		if data_local != "Multiple" {
-			re_ns := regexp.MustCompile("namespace\":\"([a-zA-Z0-9_-]*)\"")
-			re_d := regexp.MustCompile("kind\":\"Deployment\".*name\":\"([a-zA-Z0-9_-]*)\"")
-			fmt.Printf("local file: %v\n\n", data_local)
-			fmt.Printf("namespace: %v\n\n", re_ns.FindStringSubmatch(data_local)[1])
-			fmt.Printf("deployment: %v\n\n", re_d.FindStringSubmatch(data_local))
-			// data_remote := readRemoteJSON(re_ns.FindStringSubmatch(data_local)[1], re_d.FindStringSubmatch(data_local)[1])
-			// fmt.Printf("remote file: %v\n\n", data_remote)
+			if strings.Contains(data_local, "Deployment") {
+				checkDeployments(data_local)
+			} else if strings.Contains(data_local, "Service") {
+				checkServices(data_local)
+			}
 		}
 	}
-
 }
