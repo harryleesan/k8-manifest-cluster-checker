@@ -26,22 +26,26 @@ func checkDeployments(d string) {
 		// fmt.Printf("namespace: %v\n", re_namespace.FindStringSubmatch(d)[1])
 		// fmt.Printf("deployment: %v\n\n", re_deployment.FindStringSubmatch(d)[1])
 		// fmt.Printf("local file: %q\n\n", d)
-		data_remote := readRemoteDeploymentJSON(re_namespace.FindStringSubmatch(d)[1], re_search_name.FindStringSubmatch(d)[1])
+		name := re_search_name.FindStringSubmatch(d)[1]
+		data_remote := readRemoteDeploymentJSON(re_namespace.FindStringSubmatch(d)[1], name)
 		if data_remote != "" {
 			// fmt.Printf("remote file: %q\n\n", data_remote)
-			compareLocalRemote(d, data_remote)
+			color.Green("Checking deployment: %v ...\n\n", name)
+			compareLocalRemote(strings.Join([]string{name}, " (deployment)"), d, data_remote)
 		}
 	}
 }
 
 func checkServices(d string) {
-	fmt.Printf("namespace: %v\n", re_namespace.FindStringSubmatch(d)[1])
-	fmt.Printf("service: %v\n\n", re_search_name.FindStringSubmatch(d)[1])
-	fmt.Printf("local file: %q\n\n", d)
-	data_remote := readRemoteServiceJSON(re_namespace.FindStringSubmatch(d)[1], re_search_name.FindStringSubmatch(d)[1])
+	// fmt.Printf("namespace: %v\n", re_namespace.FindStringSubmatch(d)[1])
+	// fmt.Printf("service: %v\n\n", re_search_name.FindStringSubmatch(d)[1])
+	// fmt.Printf("local file: %q\n\n", d)
+	name := re_search_name.FindStringSubmatch(d)[1]
+	data_remote := readRemoteServiceJSON(re_namespace.FindStringSubmatch(d)[1], name)
 	if data_remote != "" {
-		fmt.Printf("remote file: %q\n\n", data_remote)
-		compareLocalRemote(d, data_remote)
+		// fmt.Printf("remote file: %q\n\n", data_remote)
+		color.Green("Checking service: %v ...\n\n", name)
+		compareLocalRemote(strings.Join([]string{name}, " (service)"), d, data_remote)
 	}
 }
 
@@ -79,14 +83,14 @@ func readRemoteServiceJSON(ns string, s string) string {
 	return strings.TrimSuffix(re_remove_service_annotations.ReplaceAllString(service.ObjectMeta.Annotations["kubectl.kubernetes.io/last-applied-configuration"], ""), "\n")
 }
 
-func compareLocalRemote(local string, remote string) {
+func compareLocalRemote(t string, local string, remote string) {
 	objLocalRemote := diff.ObjectReflectDiff(local, remote)
 	if objLocalRemote != "<no diffs>" {
-		color.Yellow("Differences found in resource: %v!\n\n", remote)
+		color.Yellow("Differences found in resource: %v\n\n", remote)
 		diffLocalRemote := diff.StringDiff(local, remote)
 		fmt.Printf("%v\n\n", diffLocalRemote)
 	} else {
-		color.Blue("No diff!\n\n")
+		color.Green("No diff in %v\n\n", t)
 	}
 }
 
