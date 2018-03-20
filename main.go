@@ -11,14 +11,13 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
-	// appsv1beta1 "k8s.io/api/apps/v1beta1"
 )
 
 var (
-	includeFiles                  = []string{"deployment.yml", "service.yml"}
-	re_namespace                  = regexp.MustCompile("namespace\":\"([a-zA-Z0-9_-]*)\"")
-	re_search_name                = regexp.MustCompile("name\":\"([a-zA-Z0-9_-]*)\"")
-	re_remove_service_annotations = regexp.MustCompile("\"annotations\":{},")
+	includeFiles          = []string{"deployment.yml", "service.yml"}
+	re_namespace          = regexp.MustCompile("namespace\":\"([a-zA-Z0-9_-]*)\"")
+	re_search_name        = regexp.MustCompile("name\":\"([a-zA-Z0-9_-]*)\"")
+	re_remove_annotations = regexp.MustCompile("\"annotations\":{},")
 )
 
 func checkDeployments(d string) {
@@ -70,7 +69,7 @@ func readRemoteDeploymentJSON(ns string, d string) string {
 		// fmt.Printf("Deployment does not exist!\n\n")
 	}
 	// fmt.Printf("%v\n", deployment.ObjectMeta.Annotations["kubectl.kubernetes.io/last-applied-configuration"])
-	return strings.TrimSuffix(deployment.ObjectMeta.Annotations["kubectl.kubernetes.io/last-applied-configuration"], "\n")
+	return strings.TrimSuffix(re_remove_annotations.ReplaceAllString(deployment.ObjectMeta.Annotations["kubectl.kubernetes.io/last-applied-configuration"], ""), "\n")
 }
 
 func readRemoteServiceJSON(ns string, s string) string {
@@ -80,7 +79,7 @@ func readRemoteServiceJSON(ns string, s string) string {
 		return ""
 	}
 	// fmt.Printf("%+v", service.ObjectMeta.Annotations["kubectl.kubernetes.io/last-applied-configuration"])
-	return strings.TrimSuffix(re_remove_service_annotations.ReplaceAllString(service.ObjectMeta.Annotations["kubectl.kubernetes.io/last-applied-configuration"], ""), "\n")
+	return strings.TrimSuffix(re_remove_annotations.ReplaceAllString(service.ObjectMeta.Annotations["kubectl.kubernetes.io/last-applied-configuration"], ""), "\n")
 }
 
 func compareLocalRemote(t string, local string, remote string) {
