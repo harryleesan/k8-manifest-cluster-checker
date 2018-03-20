@@ -1,12 +1,12 @@
-# Manifest K8 Checker Go
+# Kubernetes Manifest Checker
 
 ## Introduction
 
-This Go app checks your local manifests (.yml files) against your Kubernetes
-cluster and does a `diff` and outputs any discrepancies.
+This **Go** app checks your local manifests (`.yml` files) against your Kubernetes
+cluster and does a `diff` to display any discrepancies.
 
 Currently, the files that will be checked **must be named** `deployment.yml` and `service.yml`
-with **single** resource definition. Thus, only `Deployment` and `Service`
+with a **single** resource definition in each file. Thus, only `Deployment` and `Service`
 resources are checked.
 
 ## Requirements
@@ -32,7 +32,7 @@ Kubernetes manifests. If your manifests ares stored in `apps/`:
 
 The app is configured to **only** check `deployment.yml` and
 `service.yml` where you would define `Deployment` and `Service` resources
-respectively.
+respectively. Other resource types will be added in the future.
 
 ### TODO
 - [ ] Reduce binary size (right now it's ~30MB)
