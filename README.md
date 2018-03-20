@@ -10,12 +10,14 @@ with a **single** resource definition in each file. Thus, only `Deployment` and 
 resources are checked.
 
 ## Requirements
-Ensure that `go` and `kubectl` is installed on your system. Also make sure that
+Ensure that `go`, `glide` and `kubectl` is installed on your system. Also make sure that
 your `kubectl` is pointed at the correct cluster.
 
 ### Compile
+Ensure that this project is in your `$GOPATH/src/`.
 
 ```bash
+glide install
 go build setup.go main.go
 ```
 
