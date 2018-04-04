@@ -37,5 +37,7 @@ The app is configured to **only** check `deployment.yml` and
 respectively. Other resource types will be added in the future.
 
 ### TODO
-- [ ] Reduce binary size (right now it's ~30MB)
-- [ ] Give options to check for other resources
+- [ ] Reduce binary size (right now it's ~30MB).
+- [ ] Refactor code to allow other resources.
+- [ ] Refactor code to allow for multiple resource definitions in the same YAML
+  file.
