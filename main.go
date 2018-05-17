@@ -14,12 +14,18 @@ import (
 )
 
 var (
-	includeFiles          = []string{"deployment.yml", "service.yml"}
-	re_namespace          = regexp.MustCompile("namespace\":\"([a-zA-Z0-9_-]*)\"")
-	re_search_name        = regexp.MustCompile("name\":\"([a-zA-Z0-9_-]*)\"")
+	// file names of manifests used for comparison
+	includeFiles = []string{"deployment.yml", "service.yml"}
+	// regex used to search for namespace
+	re_namespace = regexp.MustCompile("namespace\":\"([a-zA-Z0-9_-]*)\"")
+	// regex used to search for name of resource
+	re_search_name = regexp.MustCompile("name\":\"([a-zA-Z0-9_-]*)\"")
+	// regex used to identify empty annotations
 	re_remove_annotations = regexp.MustCompile("\"annotations\":{},")
 )
 
+// checkDeployments() compares the local deployment resources with the remote
+// deployment resources.
 func checkDeployments(d string) {
 	if len(re_search_name.FindStringSubmatch(d)) > 0 {
 		// fmt.Printf("namespace: %v\n", re_namespace.FindStringSubmatch(d)[1])
@@ -35,6 +41,8 @@ func checkDeployments(d string) {
 	}
 }
 
+// checkServices() compares the local service resources with the remote service
+// resources.
 func checkServices(d string) {
 	// fmt.Printf("namespace: %v\n", re_namespace.FindStringSubmatch(d)[1])
 	// fmt.Printf("service: %v\n\n", re_search_name.FindStringSubmatch(d)[1])
@@ -48,6 +56,8 @@ func checkServices(d string) {
 	}
 }
 
+// readLocalYAML() reads the local YAML file specified by f and returns the
+// content of the file as a string.
 func readLocalYAML(f string) string {
 	data_yml, err := ioutil.ReadFile(f)
 	check(err)
@@ -60,6 +70,7 @@ func readLocalYAML(f string) string {
 	return string(data_json)
 }
 
+// readRemoteDeploymentJSON() reads the remote deployment resource as a string.
 func readRemoteDeploymentJSON(ns string, d string) string {
 	deployment, err := clientset.AppsV1beta1().Deployments(ns).Get(d, metav1.GetOptions{})
 	// check(err)
@@ -72,6 +83,7 @@ func readRemoteDeploymentJSON(ns string, d string) string {
 	return strings.TrimSuffix(re_remove_annotations.ReplaceAllString(deployment.ObjectMeta.Annotations["kubectl.kubernetes.io/last-applied-configuration"], ""), "\n")
 }
 
+// readRemoteServiceJSON() reads the remote deployment resource as a string.
 func readRemoteServiceJSON(ns string, s string) string {
 	service, err := clientset.CoreV1().Services(ns).Get(s, metav1.GetOptions{})
 	if err != nil {
@@ -82,6 +94,7 @@ func readRemoteServiceJSON(ns string, s string) string {
 	return strings.TrimSuffix(re_remove_annotations.ReplaceAllString(service.ObjectMeta.Annotations["kubectl.kubernetes.io/last-applied-configuration"], ""), "\n")
 }
 
+// compareLocalRemote() compares the local manifest with remote manifest.
 func compareLocalRemote(t string, local string, remote string) {
 	objLocalRemote := diff.ObjectReflectDiff(local, remote)
 	if objLocalRemote != "<no diffs>" {
@@ -93,6 +106,7 @@ func compareLocalRemote(t string, local string, remote string) {
 	}
 }
 
+// getFiles() reads in all the file names in the specified directory dir.
 func getFiles(dir string) []string {
 	fileList := make([]string, 0)
 	e := filepath.Walk(dir, func(path string, f os.FileInfo, err error) error {
@@ -110,6 +124,7 @@ func getFiles(dir string) []string {
 	return fileList
 }
 
+// checkStringInIncludedFiles() compares the file s with includedFiles.
 func checkStringInIncludedFiles(s string) bool {
 	check := false
 	for _, file := range includeFiles {
@@ -127,6 +142,7 @@ func check(e error) {
 	}
 }
 
+// main() is the entry point.
 func main() {
 	argDir := os.Args[1]
 	kubeClientSetUp()

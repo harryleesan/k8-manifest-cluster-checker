@@ -11,6 +11,8 @@ import (
 
 var clientset *kubernetes.Clientset
 
+// kubeClientSetUp() creates the client used to connect to the kubernetes
+// cluster.
 func kubeClientSetUp() {
 	var kubeconfig *string
 	if home := homeDir(); home != "" {
