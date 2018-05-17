@@ -3,7 +3,8 @@
 ## Introduction
 
 This **Go** app checks your local manifests (`.yml` files) against your Kubernetes
-cluster and does a `diff` to display any discrepancies.
+cluster and does a `diff` to display any discrepancies. This only works for
+manifests that have been created using `kubectl apply`.
 
 Currently, the files that will be checked **must be named** `deployment.yml` and `service.yml`
 with a **single** resource definition in each file. Thus, only `Deployment` and `Service`
