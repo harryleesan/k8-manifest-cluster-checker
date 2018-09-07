@@ -15,7 +15,7 @@ import (
 
 var (
 	// file names of manifests used for comparison
-	includeFiles = []string{"deployment.yml", "service.yml"}
+	includeFiles = []string{"deployment", "service", "ingress"}
 	// regex used to search for namespace
 	re_namespace = regexp.MustCompile("namespace\":\"([a-zA-Z0-9_-]*)\"")
 	// regex used to search for name of resource
@@ -23,6 +23,23 @@ var (
 	// regex used to identify empty annotations
 	re_remove_annotations = regexp.MustCompile("\"annotations\":{},")
 )
+
+// checkIngresses() compares the local ingress resources with the remote
+// ingress resources.
+func checkIngresses(d string) {
+	if len(re_search_name.FindStringSubmatch(d)) > 0 {
+		// fmt.Printf("namespace: %v\n", re_namespace.FindStringSubmatch(d)[1])
+		// fmt.Printf("deployment: %v\n\n", re_deployment.FindStringSubmatch(d)[1])
+		// fmt.Printf("local file: %q\n\n", d)
+		name := re_search_name.FindStringSubmatch(d)[1]
+		data_remote := readRemoteIngressJSON(re_namespace.FindStringSubmatch(d)[1], name)
+		if data_remote != "" {
+			// fmt.Printf("remote file: %q\n\n", data_remote)
+			color.Green("Checking ingress: %v ...\n\n", name)
+			compareLocalRemote(strings.Join([]string{name}, " (ingress)"), d, data_remote)
+		}
+	}
+}
 
 // checkDeployments() compares the local deployment resources with the remote
 // deployment resources.
@@ -70,6 +87,18 @@ func readLocalYAML(f string) string {
 	return string(data_json)
 }
 
+// readRemoteIngressJSON() reads the remote ingress resource as a string.
+func readRemoteIngressJSON(ns string, d string) string {
+	ingress, err := clientset.ExtensionsV1beta1().Ingresses(ns).Get(d, metav1.GetOptions{})
+	// check(err)
+	if err != nil {
+		color.Red("Ingress does not exist: %v!\n\n", d)
+		return ""
+	}
+	// fmt.Printf("%v\n", ingress.ObjectMeta.Annotations["kubectl.kubernetes.io/last-applied-configuration"])
+	return strings.TrimSuffix(re_remove_annotations.ReplaceAllString(ingress.ObjectMeta.Annotations["kubectl.kubernetes.io/last-applied-configuration"], ""), "\n")
+}
+
 // readRemoteDeploymentJSON() reads the remote deployment resource as a string.
 func readRemoteDeploymentJSON(ns string, d string) string {
 	deployment, err := clientset.AppsV1beta1().Deployments(ns).Get(d, metav1.GetOptions{})
@@ -77,7 +106,6 @@ func readRemoteDeploymentJSON(ns string, d string) string {
 	if err != nil {
 		color.Red("Deployment does not exist: %v!\n\n", d)
 		return ""
-		// fmt.Printf("Deployment does not exist!\n\n")
 	}
 	// fmt.Printf("%v\n", deployment.ObjectMeta.Annotations["kubectl.kubernetes.io/last-applied-configuration"])
 	return strings.TrimSuffix(re_remove_annotations.ReplaceAllString(deployment.ObjectMeta.Annotations["kubectl.kubernetes.io/last-applied-configuration"], ""), "\n")
@@ -128,7 +156,7 @@ func getFiles(dir string) []string {
 func checkStringInIncludedFiles(s string) bool {
 	check := false
 	for _, file := range includeFiles {
-		if file == s {
+		if strings.Contains(s, file) {
 			check = true
 			break
 		}
@@ -154,6 +182,8 @@ func main() {
 				checkDeployments(data_local)
 			} else if strings.Contains(data_local, "Service") {
 				checkServices(data_local)
+			} else if strings.Contains(data_local, "Ingress") {
+				checkIngresses(data_local)
 			}
 		}
 	}
